@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASR 工作台</title>
+  <link rel="stylesheet" href="style.css?v=20261114c">
+</head>
+<body>
+  <header class="top">
+    <h1>ASR 工作台</h1>
+    <span class="top-note" id="envNote"></span>
+    <button class="btn" id="openSettings">识别模型设置</button>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <section class="block">
+        <div class="block-head">
+          <h2>音频</h2>
+          <button class="link" id="selectAll">全选</button>
+          <button class="link" id="selectNone">清空选择</button>
+          <button class="link danger" id="deleteSelected">删除所选</button>
+        </div>
+
+        <div class="add-row">
+          <label class="btn" for="uploadInput">上传音频</label>
+          <input id="uploadInput" type="file" multiple hidden
+                 accept="audio/*,video/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.mp4,.mov">
+          <input id="importPath" class="input" placeholder="或粘贴本机文件夹路径，如 /Volumes/DJI/Record">
+          <button class="btn" id="importBtn">导入</button>
+        </div>
+        <div class="hint" id="fileHint"></div>
+
+        <ul class="files" id="files"></ul>
+        <p class="hint" id="pickHint" hidden>点列表条目可多选：序号决定合并顺序，选中后可用「删除所选」批量删除。</p>
+        <p class="empty" id="filesEmpty">还没有音频。上传文件，或粘贴录音所在文件夹的路径后点“导入”。</p>
+      </section>
+
+      <section class="block" id="actions">
+        <div class="block-head">
+          <h2>操作</h2>
+          <span class="sel-note" id="selNote">未选择音频</span>
+        </div>
+
+        <div class="field-grid">
+          <label>识别模型
+            <select id="provider" class="input"></select>
+          </label>
+          <label>语言
+            <select id="language" class="input">
+              <option value="Chinese">中文</option>
+              <option value="">自动识别</option>
+              <option value="English">英文</option>
+              <option value="Cantonese">粤语</option>
+              <option value="Japanese">日文</option>
+              <option value="Korean">韩文</option>
+            </select>
+          </label>
+          <label>说话人数
+            <select id="speakers" class="input">
+              <option value="2">2 人（A / B）</option>
+              <option value="1">1 人（不区分）</option>
+              <option value="3">3 人</option>
+              <option value="4">4 人</option>
+              <option value="0">自动判断人数</option>
+            </select>
+          </label>
+          <label class="wide">专有名词提示（可选）
+            <input id="context" class="input" placeholder="人名、产品名等，空格分隔">
+          </label>
+        </div>
+
+        <div class="action-row">
+          <button class="btn primary" id="transcribeBtn" disabled>转写所选音频</button>
+          <button class="btn" id="mergeBtn" disabled>合并所选音频</button>
+        </div>
+        <div class="hint">合并按音频前的序号顺序拼接；转写多个音频时逐个排队处理。</div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>任务</h2>
+          <button class="btn small" id="retryFailedBtn" hidden>重试失败任务</button>
+        </div>
+        <ul class="jobs" id="jobs"></ul>
+        <p class="empty" id="jobsEmpty">暂无任务。</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="placeholder" id="placeholder">
+        在左侧选择音频并开始转写，完成后点击任务查看带时间戳和 A / B 人物标记的文字。
+      </div>
+
+      <div class="viewer" id="viewer" hidden>
+        <div class="viewer-head">
+          <div>
+            <h2 id="vTitle"></h2>
+            <div class="meta" id="vMeta"></div>
+          </div>
+          <div class="viewer-tools">
+            <button class="btn primary" id="saveBtn" disabled>保存修改</button>
+            <button class="btn" id="retryBtn" hidden>重试</button>
+            <button class="btn" id="txtBtn">导出 TXT</button>
+            <a class="btn" data-fmt="srt">SRT</a>
+            <a class="btn" data-fmt="md">Markdown</a>
+            <a class="btn" data-fmt="json">JSON</a>
+          </div>
+        </div>
+
+        <div class="progress-box" id="vProgress" hidden>
+          <div class="bar"><i id="vBar"></i></div>
+          <span id="vStage"></span>
+        </div>
+        <div class="error-box" id="vError" hidden></div>
+
+        <audio id="player" controls preload="none"></audio>
+
+        <div class="speakers" id="speakerBar"></div>
+        <ol class="lines" id="lines"></ol>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="settings">
+    <form method="dialog" class="dialog-head">
+      <h2>识别模型设置</h2>
+      <button class="btn" value="close">关闭</button>
+    </form>
+    <div class="dialog-body">
+      <div class="network-row">
+        <label>访问范围
+          <select class="input" id="networkMode">
+            <option value="localhost">仅本机（127.0.0.1）</option>
+            <option value="lan">局域网（同网段设备可访问）</option>
+          </select>
+        </label>
+        <button class="btn" id="saveNetwork">保存并重启</button>
+      </div>
+      <div class="hint" id="networkHint"></div>
+
+      <ul class="providers" id="providerList"></ul>
+      <button class="btn" id="addProvider">添加模型</button>
+
+      <form id="providerForm" hidden>
+        <input type="hidden" name="id">
+        <label>名称
+          <input class="input" name="name" required>
+        </label>
+        <label>接入类型
+          <select class="input" name="type">
+            <option value="dashscope_filetrans">阿里云百炼 录音文件识别（异步，如 filetrans 类模型）</option>
+            <option value="openai">OpenAI 兼容接口（/audio/transcriptions）</option>
+            <option value="mlx">本地 mlx-qwen3-asr 服务</option>
+          </select>
+        </label>
+        <label>接口地址
+          <input class="input" name="base_url" required>
+        </label>
+        <label>模型名称
+          <input class="input" name="model" placeholder="例如 qwen-audio-3.1-asr-flash-filetrans">
+        </label>
+        <label>API Key
+          <input class="input" name="api_key" type="password" autocomplete="off">
+        </label>
+        <label>密钥文件路径（可选，代替直接填写 Key）
+          <input class="input" name="api_key_file" placeholder="文件内容为密钥，或 NAME=密钥">
+        </label>
+        <label>每分钟请求上限（0 为不限制）
+          <input class="input" name="rate_per_min" type="number" min="0" value="0">
+        </label>
+        <label>附加请求参数（JSON，可选）
+          <textarea class="input" name="extra" rows="3" placeholder='{"enable_itn": true}'></textarea>
+        </label>
+        <label class="check"><input type="checkbox" name="make_default"> 设为默认模型</label>
+        <div class="action-row">
+          <button class="btn primary" type="submit">保存</button>
+          <button class="btn" type="button" id="cancelProvider">取消</button>
+        </div>
+        <div class="hint" id="providerHint"></div>
+      </form>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="app.js?v=20261114c"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 模板：desktop/install-agent.sh 替换 __TOKEN__ 后写入 ~/Library/LaunchAgents。 -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kbrain.asrworkbench</string>
+
+  <!-- 直接运行解释器本体：launchd 不去 exec ~/Documents 里的文件，避免受保护目录的额外拦截。 -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PYTHON__</string>
+    <string>-m</string>
+    <string>app.main</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>__HOME__</string>
+    <key>PATH</key>
+    <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>PYTHONPATH</key>
+    <string>__SITE__:__ROOT__</string>
+    <key>ASRWB_PORT</key>
+    <string>__PORT__</string>
+__ASR_START_ENV__
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <!-- 日志放在 ~/Library/Logs：launchd 自己打开输出文件时没有 Documents 访问权。 -->
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/asrWorkbench.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/asrWorkbench.log</string>
+</dict>
+</plist>
